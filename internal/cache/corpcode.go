@@ -139,9 +139,16 @@ func (s *Store) fuzzySearch(query string, threshold float64, max int) []*CorpInf
 		info  *CorpInfo
 		score float64
 	}
+	// Strip legal form words from the query once before the loop.
+	normalizedQuery := stripLegalForm(query)
+	if normalizedQuery == "" {
+		return nil
+	}
+
 	var results []scored
 	for _, info := range s.All {
-		score := bigramSim(query, strings.ToLower(info.CorpName))
+		normalizedTarget := stripLegalForm(strings.ToLower(info.CorpName))
+		score := bigramSim(normalizedQuery, normalizedTarget)
 		if score >= threshold {
 			results = append(results, scored{info, score})
 		}
@@ -157,6 +164,22 @@ func (s *Store) fuzzySearch(query string, threshold float64, max int) []*CorpInf
 		out[i] = r.info
 	}
 	return out
+}
+
+// legalFormReplacer strips common Korean legal entity form words so they don't
+// inflate bigram similarity scores (e.g. "주식회사" appears in thousands of names).
+var legalFormReplacer = strings.NewReplacer(
+	"주식회사", "",
+	"유한회사", "",
+	"합자회사", "",
+	"합명회사", "",
+	"유한책임회사", "",
+	"(주)", "",
+	"(유)", "",
+)
+
+func stripLegalForm(s string) string {
+	return strings.TrimSpace(legalFormReplacer.Replace(s))
 }
 
 // bigramSim returns the fraction of query's character bigrams that appear in target.

@@ -17,6 +17,8 @@ func testStore() *Store {
 		{CorpCode: "00000002", CorpName: "카카오뱅크"},
 		{CorpCode: "00000003", CorpName: "카카오페이"},
 		{CorpCode: "01154811", CorpName: "주식회사 오늘의집"},
+		// 법인 형태어 노이즈 테스트용: "주식회사"를 포함하는 무관한 회사
+		{CorpCode: "99999999", CorpName: "두성에스비텍주식회사(구:두성공업주식회사)"},
 	}
 	return buildStore(corps)
 }
@@ -112,7 +114,7 @@ func TestSearch_Fuzzy_마켓컬리(t *testing.T) {
 }
 
 func TestSearch_Fuzzy_오늘의집(t *testing.T) {
-	// "오늘의집" → substring 으로도 찾힘, fuzzy 로도 찾혀야 함
+	// "오늘의집" → substring 으로도 찾힘
 	s := testStore()
 	results := s.Search("오늘의집")
 	if len(results) == 0 {
@@ -126,6 +128,34 @@ func TestSearch_Fuzzy_오늘의집(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("'오늘의집' 결과에 '주식회사 오늘의집' 없음: got %v", corpNames(results))
+	}
+}
+
+func TestSearch_Fuzzy_법인형태어_노이즈제거(t *testing.T) {
+	// "주식회사 오늘의집" 검색 시 "주식회사"를 공유하는 무관한 회사가 나오면 안 됨
+	s := testStore()
+	results := s.Search("주식회사 오늘의집")
+	for _, r := range results {
+		if r.CorpName == "두성에스비텍주식회사(구:두성공업주식회사)" {
+			t.Fatalf("'주식회사 오늘의집' 검색에서 무관한 회사 '두성에스비텍주식회사'가 반환됨 (법인 형태어 노이즈)")
+		}
+	}
+	t.Logf("'주식회사 오늘의집' 검색 결과: %v", corpNames(results))
+}
+
+func TestStripLegalForm(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"주식회사 오늘의집", "오늘의집"},
+		{"삼성전자(주)", "삼성전자"},
+		{"(주)카카오", "카카오"},
+		{"유한회사테스트", "테스트"},
+		{"컬리", "컬리"},
+	}
+	for _, c := range cases {
+		got := stripLegalForm(c.in)
+		if got != c.want {
+			t.Errorf("stripLegalForm(%q) = %q, want %q", c.in, got, c.want)
+		}
 	}
 }
 
