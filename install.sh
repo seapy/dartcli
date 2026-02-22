@@ -104,5 +104,5 @@ esac
 
 echo ""
 echo "시작하기:"
-echo "  export DART_API_KEY=<발급받은_키>"
+echo "  $BINARY setup    # API 키 설정"
 echo "  $BINARY --help"

@@ -44,10 +44,10 @@ var rootCmd = &cobra.Command{
 
 기업 공시 정보를 터미널에서 마크다운 형식으로 조회합니다.
 
-API 키 설정 방법:
-  1. 환경변수: export DART_API_KEY=<키>
-  2. 설정파일: dartcli config set api-key <키>
-  3. 플래그:   --api-key <키>`,
+API 키 설정:
+  dartcli setup          대화형으로 키 입력 후 저장 (권장)
+  --api-key <키>         일회성 플래그
+  DART_API_KEY 환경변수  스크립트/CI 환경`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 }
@@ -97,9 +97,9 @@ func requireAPIKey() error {
 API 키 발급: https://opendart.fss.or.kr/uss/umt/EgovMberInsertView.do
 
 설정 방법:
-  환경변수:  export DART_API_KEY=<키>
-  설정파일:  echo "api_key: <키>" > ~/.dartcli/config.yaml
-  플래그:    dartcli --api-key <키> <명령어>`
+  dartcli setup              대화형으로 키 저장 (권장)
+  export DART_API_KEY=<키>   환경변수
+  dartcli --api-key <키> …   플래그`
 		fmt.Fprintln(os.Stderr, warnStyle.Render(msg))
 		return fmt.Errorf("API 키가 필요합니다")
 	}
