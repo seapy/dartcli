@@ -3,7 +3,6 @@ set -e
 
 REPO="seapy/dartcli"
 BINARY="dartcli"
-INSTALL_DIR="/usr/local/bin"
 
 # ── OS / Arch 감지 ────────────────────────────────────────────────────────────
 
@@ -28,6 +27,18 @@ case "$ARCH" in
     exit 1
     ;;
 esac
+
+# ── 설치 디렉토리 결정 (sudo 없이 사용자 디렉토리 우선) ──────────────────────
+
+if [ -n "$DARTCLI_INSTALL_DIR" ]; then
+  INSTALL_DIR="$DARTCLI_INSTALL_DIR"
+elif [ -w "/usr/local/bin" ]; then
+  INSTALL_DIR="/usr/local/bin"
+else
+  INSTALL_DIR="$HOME/.local/bin"
+fi
+
+mkdir -p "$INSTALL_DIR"
 
 # ── 최신 버전 조회 ────────────────────────────────────────────────────────────
 
@@ -61,22 +72,14 @@ URL="https://github.com/$REPO/releases/download/$VERSION/$ARCHIVE"
 TMP=$(mktemp -d)
 
 echo "다운로드 중: $URL"
-$FETCH "$URL" -o "$TMP/$ARCHIVE" 2>/dev/null || {
-  # wget은 -o 옵션 형태가 다름
-  wget -qO "$TMP/$ARCHIVE" "$URL"
-}
-
-tar -xzf "$TMP/$ARCHIVE" -C "$TMP"
-rm "$TMP/$ARCHIVE"
-
-# /usr/local/bin 쓰기 권한 확인 → 없으면 sudo 사용
-if [ -w "$INSTALL_DIR" ]; then
-  mv "$TMP/$BINARY" "$INSTALL_DIR/$BINARY"
+if command -v curl >/dev/null 2>&1; then
+  curl -fsSL "$URL" -o "$TMP/$ARCHIVE"
 else
-  echo "관리자 권한으로 $INSTALL_DIR 에 설치합니다 (sudo 비밀번호가 필요할 수 있습니다)."
-  sudo mv "$TMP/$BINARY" "$INSTALL_DIR/$BINARY"
+  wget -qO "$TMP/$ARCHIVE" "$URL"
 fi
 
+tar -xzf "$TMP/$ARCHIVE" -C "$TMP"
+mv "$TMP/$BINARY" "$INSTALL_DIR/$BINARY"
 chmod +x "$INSTALL_DIR/$BINARY"
 rm -rf "$TMP"
 
@@ -84,6 +87,21 @@ rm -rf "$TMP"
 
 echo ""
 echo "설치 완료: $INSTALL_DIR/$BINARY"
+
+# PATH에 없으면 안내
+case ":$PATH:" in
+  *":$INSTALL_DIR:"*) ;;
+  *)
+    echo ""
+    echo "※ $INSTALL_DIR 가 PATH에 없습니다. 아래 줄을 셸 설정 파일에 추가하세요."
+    echo ""
+    echo "  export PATH=\"$INSTALL_DIR:\$PATH\""
+    echo ""
+    echo "  (bash: ~/.bashrc 또는 ~/.bash_profile)"
+    echo "  (zsh:  ~/.zshrc)"
+    ;;
+esac
+
 echo ""
 echo "시작하기:"
 echo "  export DART_API_KEY=<발급받은_키>"
