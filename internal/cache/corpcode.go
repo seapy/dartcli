@@ -182,29 +182,34 @@ func stripLegalForm(s string) string {
 	return strings.TrimSpace(legalFormReplacer.Replace(s))
 }
 
-// bigramSim returns the fraction of query's character bigrams that appear in target.
+// bigramSim returns the Dice coefficient of character bigrams between query and target.
+// Dice = 2 * |intersection| / (|query bigrams| + |target bigrams|)
+// This penalizes long target strings that share only a few bigrams, reducing false positives.
 // Uses rune-level bigrams for correct Korean handling.
 func bigramSim(query, target string) float64 {
 	qr := []rune(query)
 	tr := []rune(target)
-	if len(qr) < 2 {
+	qLen := len(qr) - 1
+	tLen := len(tr) - 1
+	if qLen < 1 || tLen < 1 {
 		return 0
 	}
 	// Build target bigram frequency map
-	tBig := make(map[[2]rune]int, len(tr))
-	for i := 0; i < len(tr)-1; i++ {
+	tBig := make(map[[2]rune]int, tLen)
+	for i := 0; i < tLen; i++ {
 		tBig[[2]rune{tr[i], tr[i+1]}]++
 	}
 	// Count how many query bigrams appear in target
 	matched := 0
-	for i := 0; i < len(qr)-1; i++ {
+	for i := 0; i < qLen; i++ {
 		k := [2]rune{qr[i], qr[i+1]}
 		if tBig[k] > 0 {
 			matched++
 			tBig[k]--
 		}
 	}
-	return float64(matched) / float64(len(qr)-1)
+	// Dice coefficient
+	return float64(2*matched) / float64(qLen+tLen)
 }
 
 // Status returns cache file info.
