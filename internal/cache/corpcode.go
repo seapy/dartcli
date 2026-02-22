@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -102,7 +103,7 @@ func Load(apiKey string) (*Store, bool, error) {
 }
 
 // Search finds corporations matching the query.
-// Returns exact match first; falls back to substring search.
+// Priority: exact stock/corp code → exact name → substring → bigram fuzzy.
 func (s *Store) Search(query string) []*CorpInfo {
 	// Try stock code (exact)
 	if c, ok := s.byStock[query]; ok {
@@ -124,7 +125,63 @@ func (s *Store) Search(query string) []*CorpInfo {
 			matches = append(matches, info)
 		}
 	}
-	return matches
+	if len(matches) > 0 {
+		return matches
+	}
+	// Fuzzy fallback: bigram similarity
+	return s.fuzzySearch(lower, 0.3, 10)
+}
+
+// fuzzySearch returns up to max corps whose name has bigram similarity ≥ threshold
+// with query, sorted by score descending.
+func (s *Store) fuzzySearch(query string, threshold float64, max int) []*CorpInfo {
+	type scored struct {
+		info  *CorpInfo
+		score float64
+	}
+	var results []scored
+	for _, info := range s.All {
+		score := bigramSim(query, strings.ToLower(info.CorpName))
+		if score >= threshold {
+			results = append(results, scored{info, score})
+		}
+	}
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].score > results[j].score
+	})
+	if len(results) > max {
+		results = results[:max]
+	}
+	out := make([]*CorpInfo, len(results))
+	for i, r := range results {
+		out[i] = r.info
+	}
+	return out
+}
+
+// bigramSim returns the fraction of query's character bigrams that appear in target.
+// Uses rune-level bigrams for correct Korean handling.
+func bigramSim(query, target string) float64 {
+	qr := []rune(query)
+	tr := []rune(target)
+	if len(qr) < 2 {
+		return 0
+	}
+	// Build target bigram frequency map
+	tBig := make(map[[2]rune]int, len(tr))
+	for i := 0; i < len(tr)-1; i++ {
+		tBig[[2]rune{tr[i], tr[i+1]}]++
+	}
+	// Count how many query bigrams appear in target
+	matched := 0
+	for i := 0; i < len(qr)-1; i++ {
+		k := [2]rune{qr[i], qr[i+1]}
+		if tBig[k] > 0 {
+			matched++
+			tBig[k]--
+		}
+	}
+	return float64(matched) / float64(len(qr)-1)
 }
 
 // Status returns cache file info.
