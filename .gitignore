@@ -1,0 +1,15 @@
+# 빌드 결과물
+/dartcli
+/dartcli.exe
+
+# 환경변수 / API 키
+/.env
+
+# 개발 중 루트에서 view --download 로 내려받은 공시 ZIP
+/*.zip
+
+# macOS
+.DS_Store
+
+# GoReleaser 빌드 디렉토리
+/dist/
