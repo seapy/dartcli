@@ -240,6 +240,14 @@ dartcli finance 카카오 --year 2024
 
 ## AI 에이전트 활용 가이드
 
+### Skill 설치
+
+`dartcli` skill 설치는 아래 한 줄이면 됩니다.
+
+```bash
+npx skills add seapy/dartcli
+```
+
 ### 에이전트에게 설치 요청하기
 
 AI 에이전트(Claude, Cursor 등)에게 설치를 맡길 때는 **반드시 전체 저장소 경로**를 명시하세요. `dartcli`라고만 하면 엉뚱한 패키지를 설치할 수 있습니다.
